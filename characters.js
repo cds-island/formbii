@@ -26,7 +26,76 @@ const fields = [
   { label: 'Hair Rotation', group: 'Rotation', type: 'degrees' },
   { label: 'Eye Rotation', group: 'Rotation', type: 'degrees' }
 ];
+function createFormbiiLogo() {
+  // Inject CSS once
+  if (!document.getElementById("formbii-logo-styles")) {
+    const style = document.createElement("style");
+    style.id = "formbii-logo-styles";
 
+    style.textContent = `
+      .site-logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 18px;
+        animation: formbiiLogoFloat 3s ease-in-out infinite;
+      }
+
+      .site-logo img {
+        width: min(420px, 90vw);
+        height: auto;
+
+        filter:
+          drop-shadow(0 4px 0 rgba(255,255,255,0.95))
+          drop-shadow(0 8px 18px rgba(0,183,255,0.25));
+
+        transition:
+          transform 120ms ease,
+          filter 120ms ease;
+
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .site-logo img:hover {
+        transform: scale(1.02);
+
+        filter:
+          drop-shadow(0 4px 0 rgba(255,255,255,1))
+          drop-shadow(0 10px 22px rgba(0,183,255,0.35));
+      }
+
+      @keyframes formbiiLogoFloat {
+        0% {
+          transform: translateY(0px);
+        }
+
+        50% {
+          transform: translateY(-3px);
+        }
+
+        100% {
+          transform: translateY(0px);
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  // Create logo container
+  const logoContainer = document.createElement("header");
+  logoContainer.className = "site-logo";
+
+  // Create image
+  const logo = document.createElement("img");
+  logo.src = "/assets/formbii-logo.png";
+  logo.alt = "formbii logo";
+
+  logoContainer.appendChild(logo);
+
+  return logoContainer;
+}
 function setSaveStatus(message) {
   saveStatus.textContent = message;
 }
