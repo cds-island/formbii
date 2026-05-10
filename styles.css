@@ -1,10 +1,10 @@
 :root {
-  --sky: #dff7ff;
-  --ice: #c8f2ff;
+  --vlblue: #dff7ff;
+  --lblue: #c8f2ff;
   --blue: #79dfff;
   --deep-blue: #3aa8d8;
-  --wii-blue: #00b7ff;
-  --wii-dark: #0f5f8f;
+  --teal: #00b7ff;
+  --darkteal: #0f5f8f;
   --panel: rgba(255, 255, 255, 0.88);
   --panel-strong: rgba(255, 255, 255, 0.96);
   --outline: #1f3948;
