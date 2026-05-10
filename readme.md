@@ -1,5 +1,5 @@
+<img width="259" height="86" alt="image" src="https://github.com/user-attachments/assets/e2358184-cd51-4255-95a8-5c081d5a379e" />
 
-<img width="1213" height="431" alt="image" src="https://github.com/user-attachments/assets/2ec4346e-86aa-4681-a0b7-fb07a8d7d44e" />
 
 
 **FormBii**  is a lightweight, browser-based character customization tool inspired by console-style avatar editors like Mii Maker.
