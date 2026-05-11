@@ -408,24 +408,35 @@ textarea {
 .avatar-preview-frame {
   position: absolute;
 
-  width: 480px;
-  height: 360px;
+  position: absolute;
+
+  /* Fill the preview area and preserve the iframe's aspect ratio by
+     allowing the iframe content to scale inside the container. */
+    /* Position the iframe center so we can shift/scale its internal content
+      to crop UI chrome (top/bottom bars) from the packaged creator. */
+    left: 50%;
+    top: 50%;
+    width: 160%;
+    height: 160%;
 
   border: 0;
-
-  left: -18px;
-  top: -106px;
-
-  transform: scale(1.06);
-  transform-origin: top left;
-
   pointer-events: none;
-
   z-index: 1;
-
   opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
 
-  transition: opacity 180ms ease;
+  transform-origin: center center;
+}
+
+.avatar-preview.is-ready .avatar-preview-frame {
+  opacity: 1;
+  /* Translate up a bit and scale to focus the stage area and hide letterboxing. */
+  transform: translate(-50%, -62%) scale(0.72);
+}
+
+.avatar-preview:not(.is-ready) .avatar-preview-frame {
+  /* Keep the iframe centered while loading; slightly zoomed out. */
+  transform: translate(-50%, -60%) scale(0.68);
 }
 
 .avatar-preview-loading {

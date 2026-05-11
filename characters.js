@@ -384,14 +384,15 @@ function parseCharacterText(text) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line !== '');
-  const lines = lineValues.length >= fields.length
-    ? lineValues
+  // If the file uses one-value-per-line, prefer that.
+  let values = lineValues.length >= fields.length
+    ? lineValues.slice()
     : normalizedText
-      .split(/\s*(?:\.\.\.|[,;|]|\r?\n)\s*|\s+/)
+      .split(/\s*(?:\.{3}|[,;|]|\r?\n)\s*|\s+/)
       .map((line) => line.trim())
       .filter((line) => line !== '');
 
-  return lines.map((value, index) => {
+  const parsed = values.map((value, index) => {
     const field = fields[index] || {
       label: `Extra Value ${index - fields.length + 1}`,
       group: 'Extra',
@@ -403,6 +404,20 @@ function parseCharacterText(text) {
       value
     };
   });
+
+  // If there's exactly one extra value beyond the defined fields,
+  // treat it as `Gender` so creators that export gender will display it.
+  if (values.length === fields.length + 1) {
+    const extraValue = values[fields.length];
+    parsed.push({
+      label: 'Gender',
+      group: 'Meta',
+      type: 'text',
+      value: extraValue
+    });
+  }
+
+  return parsed;
 }
 
 function createDetailsSection(lines) {
@@ -469,6 +484,13 @@ function renderCharacters(characters) {
   document.querySelectorAll('.avatar-preview-frame').forEach((frame) => {
     frame.addEventListener('load', () => {
       setTimeout(() => markPreviewReady(frame), 5000);
+      try {
+        // Tell the embedded creator to skip any initial gender screen and
+        // start the editor immediately when running in preview mode.
+        frame.contentWindow.postMessage('starteditor', window.location.origin);
+      } catch (e) {
+        // Ignore cross-origin or other failures — preview will fall back.
+      }
     });
 
     // Fallback timeout in case load event doesn't fire
