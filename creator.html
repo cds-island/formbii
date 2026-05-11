@@ -259,18 +259,376 @@
       })();
     </script>
   <script>
+    const previewParams = new URLSearchParams(window.location.search);
+    const previewMode = previewParams.get('preview') === '1';
+    const previewAvatar = previewParams.get('avatar') || '';
+    const knownPreviewGenders = new Set(['male', 'female', 'nonbinary', 'other', 'none']);
+    const previewSpriteNames = new Set(['bg', 'Heads', 'Skin', 'Clothes', 'Hair', 'Eyes', 'Mouth']);
+    let projectLoaded = false;
+    let previewStarted = false;
+
+    function normalizeAvatarText(value) {
+      return String(value || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .trim();
+    }
+
+    function readAvatarGender(avatarText) {
+      const values = normalizeAvatarText(avatarText)
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+      const lastValue = values[values.length - 1];
+
+      if (!lastValue) {
+        return '';
+      }
+
+      const normalizedGender = lastValue.toLowerCase();
+      return knownPreviewGenders.has(normalizedGender) ? normalizedGender : '';
+    }
+
+    function applyPreviewAvatar(avatarText) {
+      const normalizedAvatar = normalizeAvatarText(avatarText);
+      if (!normalizedAvatar) {
+        return;
+      }
+
+      scaffolding.setVariable('AvatarSaved', normalizedAvatar);
+
+      const values = normalizedAvatar
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+      const gender = readAvatarGender(normalizedAvatar);
+
+      const rawCoordinate = (value) => {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? -Math.abs(parsed) : undefined;
+      };
+
+      const rawNumber = (value) => {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+
+      const rawStyle = (value) => {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) ? String(parsed) : value;
+      };
+
+      if (values[0]) {
+        scaffolding.setVariable('colorskin', values[0]);
+        scaffolding.setVariable('skincolor', values[0]);
+      }
+
+      if (values[1]) {
+        scaffolding.setVariable('clothescolor', values[1]);
+        scaffolding.setVariable('colordetails]', values[1]);
+      }
+
+      if (values[2]) {
+        scaffolding.setVariable('colorhair', values[2]);
+        scaffolding.setVariable('haircolor', values[2]);
+      }
+
+      if (values[3]) {
+        scaffolding.setVariable('hair', rawStyle(values[3]));
+        scaffolding.setVariable('hairtype', values[3]);
+      }
+
+      if (values[4]) {
+        scaffolding.setVariable('eyes', rawStyle(values[4]));
+        scaffolding.setVariable('eyetype', values[4]);
+      }
+
+      if (values[5]) {
+        scaffolding.setVariable('mouthtype', values[5]);
+      }
+
+      if (values[6]) {
+        scaffolding.setVariable('hairsize', values[6]);
+      }
+
+      if (values[7]) {
+        scaffolding.setVariable('eyesize', values[7]);
+      }
+
+      if (values[8]) {
+        scaffolding.setVariable('mouthsize', values[8]);
+      }
+
+      const hairX = rawCoordinate(values[9]);
+      if (hairX !== undefined) {
+        scaffolding.setVariable('hairx', hairX);
+      }
+
+      const hairY = rawCoordinate(values[10]);
+      if (hairY !== undefined) {
+        scaffolding.setVariable('hairy', hairY);
+      }
+
+      const eyeX = rawCoordinate(values[11]);
+      if (eyeX !== undefined) {
+        scaffolding.setVariable('eyex', eyeX);
+      }
+
+      const eyeY = rawCoordinate(values[12]);
+      if (eyeY !== undefined) {
+        scaffolding.setVariable('eyey', eyeY);
+      }
+
+      const mouthX = rawCoordinate(values[13]);
+      if (mouthX !== undefined) {
+        scaffolding.setVariable('mouthx', mouthX);
+      }
+
+      const mouthY = rawCoordinate(values[14]);
+      if (mouthY !== undefined) {
+        scaffolding.setVariable('mouthy', mouthY);
+      }
+
+      const mouthRotation = rawNumber(values[15]);
+      if (mouthRotation !== undefined) {
+        scaffolding.setVariable('mouthrotation', mouthRotation);
+      }
+
+      const hairRotation = rawNumber(values[16]);
+      if (hairRotation !== undefined) {
+        scaffolding.setVariable('hairrotation', hairRotation);
+      }
+
+      const eyeRotation = rawNumber(values[17]);
+      if (eyeRotation !== undefined) {
+        scaffolding.setVariable('eyerotation', eyeRotation);
+      }
+
+      if (gender) {
+        scaffolding.setVariable('gender', gender);
+      }
+    }
+
+    function findPreviewTarget(name) {
+      return vm.runtime.targets.find((target) => {
+        if (target.isStage) {
+          return false;
+        }
+
+        const targetName = typeof target.getName === 'function'
+          ? target.getName()
+          : target.sprite?.name || target.name || '';
+        return targetName === name;
+      });
+    }
+
+    function setTargetCostume(target, style) {
+      if (!target || typeof target.setCostume !== 'function') {
+        return;
+      }
+
+      const costumeName = String(Number.parseInt(style, 10) || 1);
+      const costumes = target.sprite?.costumes || [];
+      const costumeIndex = costumes.findIndex((costume) => costume.name === costumeName);
+      if (costumeIndex >= 0) {
+        target.setCostume(costumeIndex);
+      }
+    }
+
+    function setTargetNumber(target, method, value) {
+      const number = Number.parseFloat(value);
+      if (!target || typeof target[method] !== 'function' || !Number.isFinite(number)) {
+        return;
+      }
+
+      target[method](number);
+    }
+
+    function setTargetPosition(target, x, y) {
+      const parsedX = Number.parseFloat(x);
+      const parsedY = Number.parseFloat(y);
+      if (!target || typeof target.setXY !== 'function' || !Number.isFinite(parsedX) || !Number.isFinite(parsedY)) {
+        return;
+      }
+
+      target.setXY(-Math.abs(parsedX), -Math.abs(parsedY));
+    }
+
+    function applyPreviewTargetState(avatarText) {
+      const values = normalizeAvatarText(avatarText)
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+
+      const hair = findPreviewTarget('Hair');
+      const eyes = findPreviewTarget('Eyes');
+      const mouth = findPreviewTarget('Mouth');
+
+      setTargetCostume(hair, values[3]);
+      setTargetCostume(eyes, values[4]);
+      setTargetCostume(mouth, values[5]);
+
+      setTargetNumber(hair, 'setSize', values[6]);
+      setTargetNumber(eyes, 'setSize', values[7]);
+      setTargetNumber(mouth, 'setSize', values[8]);
+
+      setTargetPosition(hair, values[9], values[10]);
+      setTargetPosition(eyes, values[11], values[12]);
+      setTargetPosition(mouth, values[13], values[14]);
+
+      setTargetNumber(mouth, 'setDirection', values[15]);
+      setTargetNumber(hair, 'setDirection', values[16]);
+      setTargetNumber(eyes, 'setDirection', values[17]);
+    }
+
+    function sendProjectBroadcast(name) {
+      vm.runtime.startHats('event_whenbroadcastreceived', {
+        BROADCAST_OPTION: name
+      });
+    }
+
+    function announcePreviewReady() {
+      if (window.parent === window) {
+        return;
+      }
+
+      window.parent.postMessage('character-preview-ready', window.location.origin);
+    }
+
+    function setTargetVisible(target, visible) {
+      if (!target || target.isStage || typeof target.setVisible !== 'function') {
+        return;
+      }
+
+      target.setVisible(visible);
+    }
+
+    function showAvatarOnly() {
+      for (const target of vm.runtime.targets) {
+        if (target.isStage) {
+          continue;
+        }
+
+        const targetName = typeof target.getName === 'function'
+          ? target.getName()
+          : target.sprite?.name || target.name || '';
+        setTargetVisible(target, previewSpriteNames.has(targetName));
+      }
+    }
+
+    function mutePreview() {
+      const audioEngine = vm.runtime.audioEngine;
+      if (audioEngine?.inputNode?.gain) {
+        // No one wants every tiny preview iframe playing the editor music.
+        audioEngine.inputNode.gain.value = 0;
+      }
+    }
+
+    function startPreview(avatarText = previewAvatar) {
+      // The parent iframe can ping us before Scratch is actually ready.
+      if (!projectLoaded || previewStarted) {
+        return;
+      }
+
+      mutePreview();
+      applyPreviewAvatar(avatarText);
+      previewStarted = true;
+      applyPreviewTargetState(avatarText);
+      // Preview cards only need the avatar, not the whole editor screen.
+      showAvatarOnly();
+
+      window.setTimeout(() => {
+        sendProjectBroadcast('starteditor');
+        sendProjectBroadcast('reloadavatar');
+        applyPreviewTargetState(avatarText);
+        showAvatarOnly();
+        vm.renderer.draw();
+      }, 120);
+
+      window.setTimeout(() => {
+        applyPreviewTargetState(avatarText);
+        showAvatarOnly();
+        announcePreviewReady();
+      }, 500);
+    }
+
+    function getPreviewCanvas() {
+      return appElement.querySelector('canvas') || document.querySelector('canvas');
+    }
+
+    function respondWithCanvasData(event) {
+      if (!event.source) {
+        return;
+      }
+
+      const canvas = getPreviewCanvas();
+      if (!canvas) {
+        event.source.postMessage({
+          type: 'CANVAS_DATA',
+          requestId: event.data.requestId,
+          error: 'Preview canvas not ready.'
+        }, event.origin);
+        return;
+      }
+
+      window.requestAnimationFrame(() => {
+        try {
+          // You're welcome :)
+          const dataUrl = canvas.toDataURL('image/png');
+          event.source.postMessage({
+            type: 'CANVAS_DATA',
+            requestId: event.data.requestId,
+            dataUrl
+          }, event.origin);
+        } catch (error) {
+          event.source.postMessage({
+            type: 'CANVAS_DATA',
+            requestId: event.data.requestId,
+            error: error.message || 'Could not export preview canvas.'
+          }, event.origin);
+        }
+      });
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data === 'starteditor') {
+        startPreview();
+        return;
+      }
+
+      if (!event.data || typeof event.data !== 'object') {
+        return;
+      }
+
+      if (event.data.type === 'REQUEST_CANVAS_DATA') {
+        respondWithCanvasData(event);
+      }
+    });
+  </script>
+  <script>
     const run = async () => {
       const projectData = await getProjectData();
       await scaffolding.loadProject(projectData);
       setProgress(1);
-      loadingScreen.hidden = true;
       if (true) {
         scaffolding.start();
+        projectLoaded = true;
+        // Now the variables exist, so the saved avatar data can be applied.
+        if (previewMode) {
+          startPreview();
+        }
+        loadingScreen.hidden = true;
       } else {
         launchScreen.hidden = false;
         launchScreen.addEventListener('click', () => {
           launchScreen.hidden = true;
           scaffolding.start();
+          projectLoaded = true;
         });
         launchScreen.focus();
       }
